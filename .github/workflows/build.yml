@@ -49,7 +49,7 @@ jobs:
 
     # Menyimpan hasil build
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: openwrt-build
         path: bin/targets/*/openwrt-image-*.bin
