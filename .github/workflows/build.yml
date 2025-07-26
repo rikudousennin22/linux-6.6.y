@@ -1,4 +1,4 @@
-name: Build OpenWRT
+name: Build OpenWRT Kernel
 
 on:
   push:
@@ -16,6 +16,13 @@ jobs:
     # Checkout repositori OpenWRT
     - name: Checkout OpenWRT
       uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'  # Pastikan submodul juga ter-cekout
+
+    # List direktori untuk verifikasi struktur repositori
+    - name: List root directory
+      run: |
+        ls -la .  # Memastikan repositori sudah ter-clone dengan benar
 
     # Setup dependencies
     - name: Setup dependencies
@@ -26,30 +33,47 @@ jobs:
         sudo apt install build-essential flex bison libssl-dev libelf-dev bc
         sudo apt install libncurses-dev pkg-config
         sudo apt install u-boot-tools
-        export ARCH=arm64
-        export CROSS_COMPILE=aarch64-linux-gnu-
 
-    # Setup OpenWRT build environment
-    - name: Setup OpenWRT build environment
+    # Setup environment variables untuk build
+    - name: Setup environment variables
+      run: |
+        echo "export ARCH=arm64" >> $GITHUB_ENV
+        echo "export CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
+
+    # Cek apakah folder scripts/feeds ada (untuk memastikan kernel bisa dibangun)
+    - name: Verify scripts/feeds
+      run: |
+        if [ -d "./scripts" ]; then
+          echo "Direktori ./scripts ditemukan."
+          ls -la ./scripts
+        else
+          echo "Direktori ./scripts tidak ditemukan. Pastikan repositori dan submodul sudah benar."
+          exit 1
+        fi
+
+    # Setup OpenWRT build environment (Hanya Kernel)
+    - name: Setup OpenWRT build environment (Kernel Only)
       run: |
         git submodule update --init --recursive
-        ./scripts/feeds update -a
-        ./scripts/feeds install -a
+        if [ -f "./scripts/feeds" ]; then
+          echo "Tidak diperlukan setup feeds untuk build kernel."
+        else
+          echo "Feed tidak ditemukan, lanjutkan ke build kernel."
+        fi
 
-    # Konfigurasi OpenWRT
-    - name: Configure OpenWRT
+    # Konfigurasi Kernel OpenWRT
+    - name: Configure OpenWRT Kernel
       run: |
-        make defconfig
-        make menuconfig # Kamu bisa menambahkan flag tertentu jika ingin konfigurasi otomatis
+        make defconfig  # Atur default config kernel OpenWRT
 
-    # Build OpenWRT
-    - name: Build OpenWRT
+    # Build Kernel OpenWRT
+    - name: Build OpenWRT Kernel
       run: |
-        make -j$(nproc)
+        make -j$(nproc)  # Build kernel dengan jumlah core maksimal
 
     # Menyimpan hasil build
-    - name: Upload build artifacts
+    - name: Upload kernel build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: openwrt-build
-        path: bin/targets/*/openwrt-image-*.bin
+        name: openwrt-kernel-build
+        path: bin/targets/*/openwrt-kernel-*.bin
