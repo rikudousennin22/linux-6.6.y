@@ -1,0 +1,55 @@
+name: Build OpenWRT
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    # Checkout repositori OpenWRT
+    - name: Checkout OpenWRT
+      uses: actions/checkout@v2
+
+    # Setup dependencies
+    - name: Setup dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential git subversion libncurses5-dev zlib1g-dev gawk flex libssl-dev
+        sudo apt install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+        sudo apt install build-essential flex bison libssl-dev libelf-dev bc
+        sudo apt install libncurses-dev pkg-config
+        sudo apt install u-boot-tools
+        export ARCH=arm64
+        export CROSS_COMPILE=aarch64-linux-gnu-
+
+    # Setup OpenWRT build environment
+    - name: Setup OpenWRT build environment
+      run: |
+        git submodule update --init --recursive
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+
+    # Konfigurasi OpenWRT
+    - name: Configure OpenWRT
+      run: |
+        make defconfig
+        make menuconfig # Kamu bisa menambahkan flag tertentu jika ingin konfigurasi otomatis
+
+    # Build OpenWRT
+    - name: Build OpenWRT
+      run: |
+        make -j$(nproc)
+
+    # Menyimpan hasil build
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: openwrt-build
+        path: bin/targets/*/openwrt-image-*.bin
